@@ -1,0 +1,7 @@
+google-genai
+python-dotenv
+easyocr
+langid
+pdf2image
+opencv-python
+streamlit
