@@ -36,7 +36,7 @@ Goal: provide an **interactive tool** for quickly analyzing visual and textual d
 1. **Clone the repository:**
 
 ```bash
-git clone https://github.com/ton-utilisateur/gemini-analyzer.git
+git clone git@github.com:GeorgesSchmidt/GeminiStreamlit.git
 cd gemini-analyzer
 ```
 
