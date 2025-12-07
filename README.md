@@ -55,7 +55,7 @@ pip install -r requirements.txt
 Create a .env file in the root folder:
 
 ```bash
-GOOGLE_API_KEY_Gem=ta_clef_api_google
+GOOGLE_API_KEY_Gem=your_api_google_key
 ```
 
 ## 🎚 Usage. 
