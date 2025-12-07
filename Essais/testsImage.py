@@ -1,9 +1,10 @@
 from google import genai
 from google.genai import types
+import os
 
 
 
-client = genai.Client(api_key="AIzaSyCHD6S4PJ5m3nmra_qzNF1sMeAAiPLuNW8")
+client = genai.Client(api_key=os.getenv("GOOGLE_API_KEY_Gem"))
 
 # Upload the first image
 image1_path = "/Users/georgesschmidt/VisualCodeProjects/GemeniTuto/Pics/IMG_1409.jpg"

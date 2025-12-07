@@ -1,8 +1,9 @@
 from google import genai
 from google.genai import types
+import os
 
 # The client gets the API key from the environment variable `GEMINI_API_KEY`.
-client = genai.Client(api_key="AIzaSyCFo2sGw_-pYm_Rar3pmdDDVNIlZ_6mfog")
+client = genai.Client(api_key=os.getenv("GOOGLE_API_KEY_Gem"))
 
 chat = client.chats.create(model="gemini-2.5-flash")
 
