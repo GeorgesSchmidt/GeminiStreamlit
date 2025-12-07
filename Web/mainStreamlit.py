@@ -27,7 +27,7 @@ class Main:
 
 
     def afficher_champ_texte(self):
-        self.question = st.text_input("ask gemini a question :")
+        self.question = st.text_input("ask gemini a question about this (those) images :")
 
 
     def afficher_uploader(self):
@@ -50,26 +50,34 @@ class Main:
             if type_doc in ['png', 'jpg', 'jpeg']:
                 # Lecture OCR
                 self.analyse_file.convert_img(self.path)
-                self.analyse_file.detect_language()
-                self.analyse_file.read_doc()
+            elif type == 'pdf':
+                self.analyse_file.convert_pdf(self.path)
+            self.analyse_file.detect_language()
+            self.analyse_file.read_doc()
 
-                st.write("Texte extrait :")
-                st.text(self.analyse_file.text)
+            st.write("Texte extrait :")
+            st.text(self.analyse_file.text)
 
-                # --- Analyse par Gemini ---
-                if self.analyse_btn:
-                    prompt = f"""
-                    Voici un texte extrait d'une image :
+            # --- Analyse par Gemini ---
+            if self.analyse_btn:
+                user_question = self.question if self.question else "Please analyze this text: summarize it, explain what it contains, and point out any important information."
 
-                    {self.analyse_file.text}
+                prompt = f"""
+                Here is the text extracted from an image:
 
-                    Analyse ce texte : résume-le, explique ce qu’il contient,
-                    et signale s'il y a des informations importantes.
-                    """
+                {self.analyse_file.text}
 
-                    response = self.chat.send_message(prompt)
-                    st.subheader("Analyse de Gemini :")
-                    st.write(response.text)
+                User's question: {user_question}
+
+                """
+
+                response = self.chat.send_message(prompt)
+                st.subheader("Gemini Analysis:")
+                st.write(response.text)
+                    
+           
+                
+                
 
 
     def run(self):

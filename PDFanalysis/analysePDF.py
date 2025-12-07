@@ -4,7 +4,7 @@ import cv2
 import numpy as np
 import langid
 import easyocr
-from pdf2image import convert_from_path
+from pdf2image import convert_from_bytes
 import warnings
 warnings.filterwarnings("ignore")
 os.environ["PYTORCH_NO_CUDA_MEMORY_CACHING"] = "1"
@@ -12,42 +12,28 @@ os.environ["PYTORCH_ENABLE_MPS_FALLBACK"] = "0"
 
 class ReadPDF:
     def __init__(self):
-        self.reader_all = easyocr.Reader(['en', 'fr', 'de', 'es'])
+        self.pages = []
+        self.reader_all = easyocr.Reader(['en', 'fr', 'de', 'es', 'it'])
         
     def convert_img(self, uploaded_file):
-        self.pages = []
-        print('Nom du fichier:', uploaded_file.name)
-
-        # Lire le fichier en mémoire
         file_bytes = np.frombuffer(uploaded_file.read(), np.uint8)
 
-        # Décoder l'image en niveau de gris
         img = cv2.imdecode(file_bytes, cv2.IMREAD_GRAYSCALE)
 
         # Vérifier si l'image est correctement lue
         if img is None:
-            print("Erreur : impossible de lire l'image")
+            print("Error img is none")
             return
 
         # Equalisation de l'histogramme
-        img_eq = cv2.equalizeHist(img)
+        img = cv2.equalizeHist(img)
 
-        print('Shape de l\'image:', img_eq.shape)
+        print('img shape :', img.shape)
 
-        # Ajouter l'image traitée à la liste
-        self.pages.append(img_eq)
+        self.pages.append(img)
         
-    def detect_type(self, path):
-        type_doc = path.split('.')[-1]
-        if type_doc == 'pdf':
-            self.pages = convert_from_path(path, dpi=300)
-            print('number of pages', len(self.pages))
-        elif type_doc == 'jpeg' or type_doc == 'png':
-            self.pages = []
-            img = cv2.imread(path, cv2.IMREAD_GRAYSCALE)
-            img = cv2.equalizeHist(img)
-            self.pages.append(img)
-            
+    def convert_pdf(self, uploaded_file):
+        self.pages = convert_from_bytes(uploaded_file.read(), dpi=300)
         
     def detect_language(self):
         sample_img = np.array(self.pages[0])
@@ -73,7 +59,12 @@ class ReadPDF:
 
 def main(path):
     analys = ReadPDF()
-    analys.detect_type(path)
+    type_doc = path.split('.')[-1]
+    if type_doc == 'png':
+        img = cv2.imread(path, cv2.IMREAD_GRAYSCALE)
+        img = cv2.equalizeHist(img)
+        analys.pages.append(img)
+        
     analys.detect_language()
     analys.read_doc()
         

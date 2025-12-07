@@ -5,3 +5,5 @@ langid
 pdf2image
 opencv-python
 streamlit
+pytest
+fpdf2
