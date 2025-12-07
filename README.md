@@ -27,6 +27,9 @@ Goal: provide an **interactive tool** for quickly analyzing visual and textual d
 
 ---
 
+[🌐 Try the Live App](https://geminiapp-ctv26wwvablzerye3vjtwh.streamlit.app/)
+
+
 ## 🖥️ Screenshot / GIF
 
 ![MainPicture](Previews/mainPicture.jpeg)
