@@ -7,3 +7,4 @@ opencv-python
 streamlit
 pytest
 fpdf2
+PyMuPDF

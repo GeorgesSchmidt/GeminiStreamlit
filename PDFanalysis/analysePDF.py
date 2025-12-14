@@ -3,7 +3,7 @@ import cv2
 import numpy as np
 import langid
 import easyocr
-from pdf2image import convert_from_bytes
+import fitz  # PyMuPDF
 import warnings
 
 # --- Disable warnings ---
@@ -23,7 +23,7 @@ class ReadPDF:
     """
 
     def __init__(self):
-        self.pages = []      # List of pages (numpy arrays or PIL images)
+        self.pages = []      # List of pages (numpy arrays, grayscale)
         self.text = ""       # Final extracted text
         self.lang = "en"     # Default fallback language
 
@@ -55,10 +55,27 @@ class ReadPDF:
     # Load PDF
     # -----------------------------------------------------------
     def convert_pdf(self, uploaded_file):
-        """Convert PDF bytes into a list of images."""
+        """Convert PDF bytes into a list of grayscale numpy images using PyMuPDF."""
         try:
-            self.pages = convert_from_bytes(uploaded_file.read(), dpi=300)
-            print(f"[INFO] PDF loaded with {len(self.pages)} page(s)")
+            pdf_bytes = uploaded_file.read()
+            doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+            self.pages = []
+
+            for i, page in enumerate(doc):
+                # Render page to image
+                pix = page.get_pixmap(dpi=300)
+                img = np.frombuffer(pix.samples, dtype=np.uint8).reshape(pix.height, pix.width, pix.n)
+
+                # Convert RGB/RGBA to grayscale
+                if pix.n >= 3:
+                    img = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
+
+                # Histogram equalization to improve OCR
+                img = cv2.equalizeHist(img)
+                self.pages.append(img)
+
+            print(f"[INFO] PDF loaded with {len(self.pages)} page(s) using PyMuPDF")
+
         except Exception as e:
             print(f"[ERROR] Failed to convert PDF: {e}")
 
@@ -72,9 +89,7 @@ class ReadPDF:
                 print("[WARNING] No pages loaded for language detection")
                 return
 
-            # Convert PIL image to numpy if needed
-            sample_img = np.array(self.pages[0])
-
+            sample_img = self.pages[0]
             sample_text = " ".join(self.reader_all.readtext(sample_img, detail=0))
 
             if not sample_text.strip():
@@ -100,16 +115,17 @@ class ReadPDF:
             reader_final = easyocr.Reader([self.lang])
             self.text = ""
 
-            for i, page in enumerate(self.pages[:max_pages]):
-                page_np = np.array(page)
+            for i, page_np in enumerate(self.pages[:max_pages]):
                 page_blocks = reader_final.readtext(page_np, detail=0)
                 page_text = " ".join(page_blocks)
-
                 self.text += page_text + "\n"
 
                 print(f"[INFO] Page {i + 1} processed, {len(page_blocks)} text blocks")
 
-            print(f"[INFO] OCR completed, text length = {len(self.text)} characters")
+            if self.text.strip():
+                print(f"[INFO] OCR completed, text length = {len(self.text)} characters")
+            else:
+                print("[WARNING] OCR completed but no text was detected.")
 
         except Exception as e:
             print(f"[ERROR] OCR failed: {e}")
@@ -138,10 +154,10 @@ def main(path):
         return
 
     reader.detect_language()
-    reader.read_doc()
+    reader.read_doc(max_pages=5)
     print(reader.text)
 
 
 if __name__ == '__main__':
-    test_path = "/path/yourfile.png"
+    test_path = "/path/to/your/file.pdf"
     main(test_path)

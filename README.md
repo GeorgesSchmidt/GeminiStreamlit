@@ -75,5 +75,35 @@ streamlit run Web/mainStreamlit.py
 pytest -q --disable-warnings
 ```
 
+-------------------------------------------------------------------------------------------------------------------  
 
+## 🤖 AI Agents - What's New
+
+Until now, the program logic was:
+
+**Upload → OCR → Display text → (Optional) User question → Gemini answers**
+
+With an AI agent, we move to:
+
+**Upload → OCR → AGENT**
+```
+                 ├─ Decision: document type
+                 ├─ Decision: mission/task
+                 ├─ Action: targeted analysis
+                 └─ Proposal to user
+```
+
+In other words, the AI agent performs intelligent processing upstream of user questions.
+
+The agent classifies documents (invoice, contract, CV, article, letter, technical document, etc.)
+
+Chooses the appropriate “mission” or task for analysis
+
+Produces a structured summary, explanation, or actionable insights
+
+All instructions for the agent are defined in prompts.py, which provides structured prompts telling Gemini what to do with the OCR-extracted text.
+
+```bash
+streamlit run Web/multiDocApp.py
+```
 

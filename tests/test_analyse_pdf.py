@@ -2,15 +2,10 @@ import sys
 import os
 import warnings
 
-# ----------------------------
-# Supprimer les warnings
-# ----------------------------
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 warnings.filterwarnings("ignore", module="torch|easyocr")
 
-# ----------------------------
-# Import du module à tester
-# ----------------------------
+
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 import io

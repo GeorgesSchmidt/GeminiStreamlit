@@ -58,7 +58,7 @@ class Main:
 
     def afficher_uploader(self):
         """File uploader UI."""
-        self.path = st.file_uploader("📤 Upload an image", type=['png', 'jpg', 'jpeg'])
+        self.path = st.file_uploader("📤 Upload an image", type=['png', 'jpg', 'jpeg', 'pdf'])
         if self.path:
             self.analyse_btn = st.button("🔍 Analyze extracted text with Gemini")
 

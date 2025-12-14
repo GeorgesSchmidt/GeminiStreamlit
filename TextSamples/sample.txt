@@ -1,0 +1,27 @@
+INVOICE
+
+Company: ACME Solutions Ltd.
+Address: 12 rue de l’Innovation, 75010 Paris, France
+
+Invoice Number: INV-2024-031
+Invoice Date: 12/03/2024
+Due Date: 12/04/2024
+
+Bill To:
+TechNova SAS
+45 avenue des Sciences
+75005 Paris, France
+
+Description                  Quantity    Unit Price    Total
+----------------------------------------------------------------
+Cloud consulting services        10        120.00 €     1,200.00 €
+Infrastructure audit              1        800.00 €       800.00 €
+
+Subtotal:                                         2,000.00 €
+VAT (20%):                                          400.00 €
+Total Amount Due:                                2,400.00 €
+
+Payment Method: Bank Transfer
+IBAN: FR76 3000 4000 5000 6000 7000 800
+
+Thank you for your business.
