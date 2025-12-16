@@ -1,6 +1,7 @@
 import streamlit as st
 import os
 import sys
+import time
 from dotenv import load_dotenv
 from google import genai
 
@@ -54,81 +55,83 @@ class Main:
     # -----------------------------------------------------------
     def afficher_champ_texte(self):
         """Text input for user question."""
-        self.question = st.text_input("💬 Ask Gemini a question about the uploaded image:")
+        self.question = st.text_input("💬 Ask Gemini a question about text:")
 
     def afficher_uploader(self):
         """File uploader UI."""
         self.path = st.file_uploader("📤 Upload an image", type=['png', 'jpg', 'jpeg', 'pdf'])
-        if self.path:
-            self.analyse_btn = st.button("🔍 Analyze extracted text with Gemini")
+        if self.path is not None:
+            st.subheader("📄 Uploaded file:")
+            st.write(self.path.name)
+            #self.analyse_btn = st.button("🔍 Analyze extracted text with Gemini")
+            self.afficher_resultats()
 
     # -----------------------------------------------------------
     # Core Logic
     # -----------------------------------------------------------
     def afficher_resultats(self):
-        """Display results from Gemini based on user input or uploaded file."""
+        start_time = time.time()
+        extension = self.path.name.split('.')[-1].lower()
 
-        # --- TEXT QUESTION PART ---
-        if self.question and len(self.analyse_file.text) > 0:
-            response = self.chat.send_message(self.question)
-            st.subheader("💡 Gemini Answer:")
-            st.write(response.text)
+        # OCR
+        if extension in ['png', 'jpg', 'jpeg']:
+            self.analyse_file.convert_img(self.path)
+        elif extension == "pdf":
+            self.analyse_file.convert_pdf(self.path)
+        else:
+            st.error("❌ Unsupported file type.")
+            return
 
-        # --- IMAGE ANALYSIS PART ---
-        if self.path is not None:
-            st.subheader("📄 Uploaded file:")
-            st.write(self.path.name)
+        self.analyse_file.detect_language()
+        self.analyse_file.read_doc()
+        end_time = time.time()
+        duration = int(end_time - start_time)
 
-            extension = self.path.name.split('.')[-1].lower()
+        # Affichage OCR
+        st.subheader("📝 Extracted Text:")
+        st.text_area("Text from document:", self.analyse_file.text, height=300)
+        st.text(f'Document read in {duration} s')
+        st.text(f'The text language: {self.analyse_file.lang}')
+        st.text(f'Word count: {len(self.analyse_file.text.split())}')
 
-            # Extract text depending on file type
-            if extension in ['png', 'jpg', 'jpeg']:
-                self.analyse_file.convert_img(self.path)
-            elif extension == "pdf":
-                self.analyse_file.convert_pdf(self.path)
-            else:
-                st.error("❌ Unsupported file type.")
-                return
+        # Interaction Gemini
+        self.question = st.text_input("💬 Ask Gemini a question about this text:")
+        self.analyse_btn = st.button("🔍 Get Gemini response")
 
-            # OCR + Language detection + Read
-            self.analyse_file.detect_language()
-            self.analyse_file.read_doc()
+        if self.analyse_btn:
+            user_question = (
+                self.question
+                if self.question
+                else "Please analyze this text: summarize and highlight key points."
+            )
 
-            # Display extracted text
-            st.subheader("📝 Extracted Text:")
-            st.text(self.analyse_file.text)
+            prompt = f"""
+            Text extracted from document:
 
-            # --- Gemini Analysis ---
-            if self.analyse_btn:
-                user_question = (
-                    self.question if self.question
-                    else "Please analyze this text: summarize it, explain what it contains, and highlight key points."
-                )
+            {self.analyse_file.text}
 
-                prompt = f"""
-                Here is the text extracted from the image:
+            User question: {user_question}
+            """
 
-                {self.analyse_file.text}
-
-                User's question:
-                {user_question}
-                """
-
+            try:
                 response = self.chat.send_message(prompt)
-
                 st.subheader("🤖 Gemini Analysis:")
-                st.write(response.text)
+                st.text_area("Gemini response:", response.text, height=300)
+            except Exception as e:
+                st.error(f"⚠️ Gemini is temporarily unavailable: {e}")
+
 
     # -----------------------------------------------------------
     # RUN APP
     # -----------------------------------------------------------
     def run(self):
         st.title("📘 Gemini Image/Text Analyzer")
-        st.write("Upload an image, extract its content, and ask Gemini anything about it.")
+        st.write("Upload an image containing text or a pdf document, this program extract the text and you can ask gemini about this text.")
+        st.write('OCR detection take about 32 s for a single page document up to 6 minutes for a 25 pages, please wait')
 
         self.afficher_uploader()
-        self.afficher_champ_texte()
-        self.afficher_resultats()
+        # self.afficher_champ_texte()
+        # self.afficher_resultats()
 
 
 # -----------------------------------------------------------

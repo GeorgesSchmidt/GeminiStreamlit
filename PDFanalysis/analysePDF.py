@@ -105,8 +105,8 @@ class ReadPDF:
     # -----------------------------------------------------------
     # Full OCR
     # -----------------------------------------------------------
-    def read_doc(self, max_pages=3):
-        """Perform OCR on the document using the detected language."""
+    def read_doc(self, max_pages_per_chunk=3):
+        """Perform OCR on the document using the detected language, chunked if needed."""
         try:
             if not self.pages:
                 print("[ERROR] No pages available for OCR")
@@ -115,21 +115,22 @@ class ReadPDF:
             reader_final = easyocr.Reader([self.lang])
             self.text = ""
 
-            for i, page_np in enumerate(self.pages[:max_pages]):
-                page_blocks = reader_final.readtext(page_np, detail=0)
-                page_text = " ".join(page_blocks)
-                self.text += page_text + "\n"
-
-                print(f"[INFO] Page {i + 1} processed, {len(page_blocks)} text blocks")
+            # Diviser en chunks
+            for start in range(0, len(self.pages), max_pages_per_chunk):
+                chunk_pages = self.pages[start:start+max_pages_per_chunk]
+                for i, page_np in enumerate(chunk_pages):
+                    page_blocks = reader_final.readtext(page_np, detail=0)
+                    page_text = " ".join(page_blocks)
+                    self.text += page_text + "\n"
+                    print(f"[INFO] Page {start+i+1} processed, {len(page_blocks)} text blocks")
 
             if self.text.strip():
-                print(f"[INFO] OCR completed, text length = {len(self.text)} characters")
+                print(f"[INFO] OCR completed, total text length = {len(self.text)} characters")
             else:
                 print("[WARNING] OCR completed but no text was detected.")
 
         except Exception as e:
             print(f"[ERROR] OCR failed: {e}")
-
 
 # -----------------------------------------------------------
 # Standalone test mode
