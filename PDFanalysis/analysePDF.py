@@ -12,7 +12,10 @@ warnings.filterwarnings("ignore")
 # --- Environment settings for PyTorch / EasyOCR ---
 os.environ["PYTORCH_NO_CUDA_MEMORY_CACHING"] = "1"
 os.environ["PYTORCH_ENABLE_MPS_FALLBACK"] = "0"
+os.environ["CUDA_VISIBLE_DEVICES"] = ""
 
+
+warnings.filterwarnings("ignore")
 
 class ReadPDF:
     """
@@ -26,9 +29,15 @@ class ReadPDF:
         self.pages = []      # List of pages (numpy arrays, grayscale)
         self.text = ""       # Final extracted text
         self.lang = "en"     # Default fallback language
+        self.dpi = 180
 
+        self.supported_langs = ['en', 'fr', 'de', 'es', 'it']
+        self.readers = {}
         # Multi-language OCR reader (used only for language detection)
-        self.reader_all = easyocr.Reader(['en', 'fr', 'de', 'es', 'it'])
+        self.reader_all = easyocr.Reader(
+            self.supported_langs,
+            gpu=False
+        )
 
     # -----------------------------------------------------------
     # Load image
@@ -63,7 +72,7 @@ class ReadPDF:
 
             for i, page in enumerate(doc):
                 # Render page to image
-                pix = page.get_pixmap(dpi=300)
+                pix = page.get_pixmap(dpi=self.dpi)
                 img = np.frombuffer(pix.samples, dtype=np.uint8).reshape(pix.height, pix.width, pix.n)
 
                 # Convert RGB/RGBA to grayscale
@@ -90,7 +99,7 @@ class ReadPDF:
                 return
 
             sample_img = self.pages[0]
-            sample_text = " ".join(self.reader_all.readtext(sample_img, detail=0))
+            sample_text = " ".join(self.reader_all.readtext(sample_img, detail=0, paragraph=True))
 
             if not sample_text.strip():
                 print("[WARNING] No text detected in sample for language detection")
@@ -102,6 +111,16 @@ class ReadPDF:
         except Exception as e:
             print(f"[ERROR] Language detection failed: {e}")
 
+    # --------------------------------------------------
+    # Reader OCR (cache)
+    # --------------------------------------------------
+    def _get_reader(self):
+        if self.lang not in self.readers:
+            self.readers[self.lang] = easyocr.Reader(
+                [self.lang],
+                gpu=False
+            )
+        return self.readers[self.lang]
     # -----------------------------------------------------------
     # Full OCR
     # -----------------------------------------------------------
@@ -112,14 +131,15 @@ class ReadPDF:
                 print("[ERROR] No pages available for OCR")
                 return
 
-            reader_final = easyocr.Reader([self.lang])
+            #reader_final = easyocr.Reader([self.lang])
+            reader_final = self._get_reader()
             self.text = ""
 
             # Diviser en chunks
             for start in range(0, len(self.pages), max_pages_per_chunk):
                 chunk_pages = self.pages[start:start+max_pages_per_chunk]
                 for i, page_np in enumerate(chunk_pages):
-                    page_blocks = reader_final.readtext(page_np, detail=0)
+                    page_blocks = reader_final.readtext(page_np, detail=0, paragraph=True)
                     page_text = " ".join(page_blocks)
                     self.text += page_text + "\n"
                     print(f"[INFO] Page {start+i+1} processed, {len(page_blocks)} text blocks")
@@ -160,5 +180,6 @@ def main(path):
 
 
 if __name__ == '__main__':
+    path = os.path.join(os.getcwd(), 'PDF', 'attestation_covid.pdf')
     test_path = "/path/to/your/file.pdf"
-    main(test_path)
+    main(path)
