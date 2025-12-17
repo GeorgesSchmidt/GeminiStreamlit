@@ -85,4 +85,4 @@ def test_multi_page_pdf():
 
     assert isinstance(reader.text, str)
     for i in range(3):
-        assert f"Page {i+1}" in reader.text or reader.text  # Vérifie qu'au moins du texte a été lu
+        assert f"Page {i+1}" in reader.text or reader.text  
