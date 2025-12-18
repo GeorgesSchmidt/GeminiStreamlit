@@ -7,38 +7,56 @@ import fitz  # PyMuPDF
 import warnings
 import streamlit as st
 
-# --- Désactivation des warnings et réglages PyTorch ---
+# --- Disable warnings and PyTorch settings ---
 warnings.filterwarnings("ignore")
 os.environ["PYTORCH_NO_CUDA_MEMORY_CACHING"] = "1"
 os.environ["CUDA_VISIBLE_DEVICES"] = ""
 
-# --- CHARGEMENT OPTIMISÉ DU MODÈLE (C'est la clé !) ---
+# --- OPTIMIZED MODEL LOADING ---
 @st.cache_resource
 def load_ocr_reader():
     """
-    Charge le modèle une seule fois pour tout le cycle de vie de l'app.
-    On charge 'fr' et 'en' par défaut pour couvrir la majorité des cas sans saturer la RAM.
+    Loads the model once for the entire app lifecycle.
+    We load 'en' and 'fr' by default to save RAM.
     """
-    return easyocr.Reader(['fr', 'en'], gpu=False)
+    return easyocr.Reader(['en', 'fr'], gpu=False)
 
 class ReadPDF:
     def __init__(self):
-        self.pages = []      
-        self.text = ""       
-        self.lang = "fr"     
-        self.dpi = 150  # Réduit de 180 à 150 pour économiser 30% de RAM
+        self.pages = []      # List of images (numpy arrays)
+        self.text = ""       # Extracted text
+        self.lang = "en"     # Default language
+        self.dpi = 150       # Reduced DPI to save 30% RAM compared to 180
+
+    def convert_img(self, uploaded_file):
+        """
+        Convert an uploaded image file (jpg, png) to a grayscale numpy array.
+        This was the missing method causing the AttributeError.
+        """
+        try:
+            file_bytes = np.frombuffer(uploaded_file.read(), np.uint8)
+            img = cv2.imdecode(file_bytes, cv2.IMREAD_GRAYSCALE)
+            
+            if img is None:
+                raise ValueError("Could not decode image.")
+
+            # Improve contrast for better OCR
+            img = cv2.equalizeHist(img)
+            self.pages = [img]
+            print(f"[INFO] Image loaded successfully.")
+        except Exception as e:
+            st.error(f"Image conversion error: {e}")
 
     def convert_pdf(self, uploaded_file):
-        """Convertit le PDF en images avec gestion propre de la mémoire."""
+        """Convert PDF pages into grayscale images with memory management."""
         try:
-            # Important : on lit le stream directement
             pdf_bytes = uploaded_file.read()
             doc = fitz.open(stream=pdf_bytes, filetype="pdf")
             self.pages = []
 
             for page in doc:
                 pix = page.get_pixmap(dpi=self.dpi)
-                # Conversion directe en Gris pour économiser la mémoire
+                # Direct conversion to grayscale to save memory
                 img = np.frombuffer(pix.samples, dtype=np.uint8).reshape(pix.height, pix.width, pix.n)
                 
                 if pix.n >= 3:
@@ -47,70 +65,62 @@ class ReadPDF:
                 img = cv2.equalizeHist(img)
                 self.pages.append(img)
                 
-            doc.close() # Libère le fichier PDF
-            print(f"[INFO] PDF chargé : {len(self.pages)} pages")
+            doc.close() # Free PDF file from memory
+            print(f"[INFO] PDF loaded: {len(self.pages)} pages")
         except Exception as e:
-            st.error(f"Erreur de conversion PDF : {e}")
+            st.error(f"PDF conversion error: {e}")
+
+    def detect_language(self):
+        """
+        Optional: Detect language based on the first page content.
+        Can be called manually or inside read_doc.
+        """
+        if not self.pages:
+            return
+        try:
+            reader = load_ocr_reader()
+            sample_results = reader.readtext(self.pages[0], detail=0, paragraph=True)
+            sample_text = " ".join(sample_results)
+            if sample_text.strip():
+                self.lang, _ = langid.classify(sample_text)
+        except Exception:
+            self.lang = "en"
 
     def read_doc(self):
-        """Exécute l'OCR en utilisant le reader en cache."""
+        """Perform OCR on all pages using the cached reader."""
         try:
             if not self.pages:
-                return "Aucune page à lire."
+                return "No content to read."
 
-            # Utilise le modèle partagé (évite de recréer un objet Reader)
+            # Use the shared model from cache
             reader = load_ocr_reader()
             
             extracted_pages = []
             
-            # Barre de progression Streamlit pour voir l'avancement
+            # Progress bar for the user
             progress_bar = st.progress(0)
             
             for i, page_np in enumerate(self.pages):
-                # OCR sur la page
+                # Run OCR
                 page_blocks = reader.readtext(page_np, detail=0, paragraph=True)
                 page_text = " ".join(page_blocks)
                 extracted_pages.append(page_text)
                 
-                # Mise à jour de la progression
+                # Update progress
                 progress_bar.progress((i + 1) / len(self.pages))
             
             self.text = "\n\n".join(extracted_pages)
             
-            # OPTIONNEL : Détection de langue après coup sur le texte extrait
+            # Detect language after extraction
             if self.text.strip():
-                self.lang, _ = langid.classify(self.text[:500]) # Sur les 500 premiers caractères
+                self.lang, _ = langid.classify(self.text[:500])
                 
             return self.text
 
         except Exception as e:
-            st.error(f"Erreur OCR : {e}")
+            st.error(f"OCR process failed: {e}")
             return ""
 
-# --- Exemple d'intégration dans ton mainStreamlit.py ---
-def run_app():
-    st.title("OCR PDF / Image")
-    
-    file = st.file_uploader("Chargez votre document", type=["pdf", "png", "jpg"])
-    
-    if file:
-        if st.button("Lancer l'extraction"):
-            with st.spinner("Traitement en cours..."):
-                reader_obj = ReadPDF()
-                
-                # Selon le type de fichier
-                if file.type == "application/pdf":
-                    reader_obj.convert_pdf(file)
-                else:
-                    # Pour les images, utilise ton ancienne méthode convert_img 
-                    # mais avec cv2.IMREAD_GRAYSCALE directement
-                    file_bytes = np.frombuffer(file.read(), np.uint8)
-                    img = cv2.imdecode(file_bytes, cv2.IMREAD_GRAYSCALE)
-                    reader_obj.pages = [cv2.equalizeHist(img)]
-                
-                resultat = reader_obj.read_doc()
-                st.success("Extraction terminée !")
-                st.text_area("Texte extrait", resultat, height=300)
-
+# This part is only for local testing, Streamlit uses the class above.
 if __name__ == "__main__":
-    run_app()
+    print("Class ReadPDF is ready for use in Streamlit.")
