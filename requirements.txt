@@ -1,12 +1,11 @@
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch
+torchvision
+streamlit
+easyocr
 google-genai
 python-dotenv
-easyocr
 langid
-pdf2image
-opencv-python
-streamlit
-pytest
+opencv-python-headless
 fpdf2
 PyMuPDF
-torch --index-url https://download.pytorch.org/whl/cpu
-torchvision --index-url https://download.pytorch.org/whl/cpu
